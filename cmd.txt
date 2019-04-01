@@ -1,0 +1,1 @@
+C:\WINDOWS\system32>"C:\Users\Austin\Desktop\MonoInjector64.exe" -d "D:\Source-Misc\SCP Exposed Establishment\SCPEE\bin\x64\Release\SCPEE.dll" -n "SCPEE.NotEvil" -c "EELoader" -m "Init" -t "SCPSL.exe"
