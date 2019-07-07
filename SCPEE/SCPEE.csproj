@@ -354,6 +354,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NotEvil\EELoader.cs" />
+    <Compile Include="NotEvil\HackModules\EEHM_ESP.cs" />
     <Compile Include="NotEvil\HackModules\EEHM_Brand.cs" />
     <Compile Include="NotEvil\HackModules\EEHM_PlayerScanner.cs" />
     <Compile Include="NotEvil\Utils\Misc.cs" />

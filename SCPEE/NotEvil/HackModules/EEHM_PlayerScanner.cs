@@ -21,7 +21,7 @@ namespace SCPEE.NotEvil.HackModules
             if (Input.GetKeyDown(KeyCode.Keypad1))
                 isEnabled = !isEnabled;
 
-            if (isEnabled) // This entire clause's logic is inefficient.
+            if (isEnabled)
             {
                 localPlayer = Utils.Misc.GetLocalPlayerGameObject();
                 if (localPlayer == null)
@@ -55,7 +55,7 @@ namespace SCPEE.NotEvil.HackModules
                 if (!gameObject.GetComponent<NetworkIdentity>().isLocalPlayer)
                 {
                     int playerClass = player.GetComponent<CharacterClassManager>().curClass;
-
+                    // TODO: Better way. This works for now though.
                     if ((new[] { 4, 11, 12, 13 }).Contains(playerClass))
                         aliveMTF += 1;
                     else if ((new[] { 5, 10, 7, 9, 3, 0, 17, 16 }).Contains(playerClass))

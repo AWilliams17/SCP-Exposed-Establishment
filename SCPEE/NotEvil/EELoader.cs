@@ -23,6 +23,7 @@ namespace SCPEE.NotEvil
         {
             _exposedEstablishment.AddComponent<Brand>();
             _exposedEstablishment.AddComponent<PlayerScanner>();
+            _exposedEstablishment.AddComponent<ItemESP>();
         }
 
         private static void Unload()
