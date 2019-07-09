@@ -1,8 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections.Generic;
-using System.Linq;
-using System;
 
 
 namespace SCPEE.NotEvil.HackModules
@@ -17,14 +15,17 @@ namespace SCPEE.NotEvil.HackModules
         {
             ScannedObjectLabel = ObjectLabel;
             ScannedObjectPosition = CalculatePositionRect(ObjectPosition);
+            ScannedObjectLabelColor = LabelColor;
         }
 
-        private Rect CalculatePositionRect(Vector3 ObjectPosition)
+        private static Rect CalculatePositionRect(Vector3 ObjectPosition)
         {
-            return new Rect (
-                            ObjectPosition.x - 20f, Screen.height - ObjectPosition.y - 20f, 
-                            ObjectPosition.x + 40f, Screen.height - ObjectPosition.y + 50f
-                        );
+            Rect positionRect = new Rect
+                (
+                    ObjectPosition.x - 20f, Screen.height - ObjectPosition.y - 20f,
+                    ObjectPosition.x + 40f, Screen.height - ObjectPosition.y + 50f
+                );
+            return positionRect;
         }
     }
 
@@ -44,10 +45,10 @@ namespace SCPEE.NotEvil.HackModules
                 localPlayer = Utils.Misc.GetLocalPlayerGameObject();
                 if (localPlayer != null)
                 {
+                    scannedObjects.Clear();
                     ScanItems();
                     ScanPlayers();
                 }
-                scannedObjects.Clear();
             }
         }
 
