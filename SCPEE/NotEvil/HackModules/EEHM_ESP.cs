@@ -28,13 +28,11 @@ namespace SCPEE.NotEvil.HackModules
         }
     }
 
-    public class ItemESP : NetworkBehaviour
+    public class ESP : NetworkBehaviour
     {
         private bool isEnabled = false;
         private GameObject localPlayer = null;
         private List<ScannedObject> scannedObjects = new List<ScannedObject>();
-        private List<ScannedObject> items = new List<ScannedObject>();
-        private List<ScannedObject> players = new List<ScannedObject>();
 
         private void Update()
         {
@@ -56,17 +54,6 @@ namespace SCPEE.NotEvil.HackModules
         {
             if (isEnabled)
             {
-                //foreach (ScannedObject item in items)
-                //{
-                //    GUI.contentColor = Color.cyan;
-                //    GUI.Label(item.ScannedObjectPosition, item.ScannedObjectName);
-                //}
-                //
-                //foreach (ScannedObject player in players)
-                //{
-                //    GUI.contentColor = Color.green;
-                //    GUI.Label(player.ScannedObjectPosition, player.ScannedObjectName);
-                //}
                 foreach (ScannedObject scannedObject in scannedObjects)
                 {
                     GUI.contentColor = scannedObject.ScannedObjectLabelColor;
@@ -82,8 +69,7 @@ namespace SCPEE.NotEvil.HackModules
                 "grenade", "pistol", "scorpion", "mp7", "epsilon",
                 "fusion"
             };
-
-            //items.Clear();
+            
             scannedObjects.Clear();
             Camera mainCamera = Camera.main;
             foreach (Pickup itemPickup in FindObjectsOfType<Pickup>())
@@ -102,8 +88,6 @@ namespace SCPEE.NotEvil.HackModules
                         {
                             ScannedObject scannedItem = new ScannedObject($"{itemLabel}:{itemDistanceFromPlayer}m", itemPosition, Color.cyan);
                             scannedObjects.Add(scannedItem);
-                            //Item scannedItem = new Item($"{itemLabel}:{itemDistanceFromPlayer}m", itemPosition);
-                            //items.Add(scannedItem);
                         }
                     }
                 }
@@ -112,7 +96,6 @@ namespace SCPEE.NotEvil.HackModules
 
         private void ScanPlayers()
         {
-            //players.Clear();
             scannedObjects.Clear();
             GameObject[] allPlayers = Utils.Misc.GetPlayerGameObjects();
             Camera mainCamera = Camera.main;
@@ -131,8 +114,6 @@ namespace SCPEE.NotEvil.HackModules
                     {
                         ScannedObject scannedPlayer = new ScannedObject($"{playerClassname}:{playerDistanceFromLocalPlayer}m", playerPosition, Color.green);
                         scannedObjects.Add(scannedPlayer);
-                        //Player scannedPlayer = new Player(playerClassManager.klasy[playerClassManager.curClass].fullName, playerPosition);
-                        //players.Add(scannedPlayer);
                     }
                 }
             }
