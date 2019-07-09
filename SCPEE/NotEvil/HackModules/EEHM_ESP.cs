@@ -47,6 +47,7 @@ namespace SCPEE.NotEvil.HackModules
                     ScanItems();
                     ScanPlayers();
                 }
+                scannedObjects.Clear();
             }
         }
 
@@ -70,7 +71,6 @@ namespace SCPEE.NotEvil.HackModules
                 "fusion"
             };
             
-            scannedObjects.Clear();
             Camera mainCamera = Camera.main;
             foreach (Pickup itemPickup in FindObjectsOfType<Pickup>())
             {
@@ -96,7 +96,6 @@ namespace SCPEE.NotEvil.HackModules
 
         private void ScanPlayers()
         {
-            scannedObjects.Clear();
             GameObject[] allPlayers = Utils.Misc.GetPlayerGameObjects();
             Camera mainCamera = Camera.main;
             foreach (GameObject player in allPlayers)
