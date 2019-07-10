@@ -36,16 +36,16 @@ namespace SCPEE.NotEvil.HackModules
         {
             while (true)
             {
+                espObjects.Clear();
                 localPlayer = Utils.Misc.GetLocalPlayerGameObject();
                 if (isEnabled && localPlayer != null)
                 {
-                    espObjects.Clear();
                     ScanForItems();
                     ScanForPlayers();
                     ScanForLocations();
                 }
 
-                yield return new WaitForSeconds(4);
+                yield return new WaitForSeconds(0.5f);
             }
         }
 
@@ -57,26 +57,28 @@ namespace SCPEE.NotEvil.HackModules
 
         private void OnGUI()
         {
-            foreach (ESPObject espObject in espObjects)
+            if (isEnabled)
             {
-                Camera mainCamera = Camera.main;
-                Vector3 mainCameraPosition = mainCamera.transform.position;
-                Vector3 objectPosition = espObject.ESPGameObject.transform.position;
-                Vector3 objectScreenPoint = mainCamera.WorldToScreenPoint(objectPosition);
-                int objectDistanceFromPlayer = (int)Vector3.Distance(mainCameraPosition, objectPosition);
-
-                bool objectIsWithinRange = !(Mathf.Abs(mainCameraPosition[2] - objectPosition[2]) > 300f) && objectScreenPoint.z > 0f;
-                bool objectIsCloseEnough = objectDistanceFromPlayer <= espObject.ESPMinimumDistance;
-                if (objectIsWithinRange && objectIsCloseEnough)
+                foreach (ESPObject espObject in espObjects)
                 {
-                    Rect positionRect = new Rect
-                        (
-                            objectScreenPoint.x - 20f, Screen.height - objectScreenPoint.y - 20f,
-                            objectScreenPoint.x + 40f, Screen.height - objectScreenPoint.y + 50f
-                        );
-                    GUI.color = espObject.ESPLabelColor;
-                    GUI.Label(positionRect, $"{espObject.ESPLabel} : {objectDistanceFromPlayer}");
+                    Camera mainCamera = Camera.main;
+                    Vector3 mainCameraPosition = mainCamera.transform.position;
+                    Vector3 objectPosition = espObject.ESPGameObject.transform.position;
+                    Vector3 objectScreenPoint = mainCamera.WorldToScreenPoint(objectPosition);
+                    int objectDistanceFromPlayer = (int)Vector3.Distance(mainCameraPosition, objectPosition);
 
+                    bool objectIsWithinRange = !(Mathf.Abs(mainCameraPosition[2] - objectPosition[2]) > 300f) && objectScreenPoint.z > 0f;
+                    bool objectIsCloseEnough = objectDistanceFromPlayer <= espObject.ESPMinimumDistance;
+                    if (objectIsWithinRange && objectIsCloseEnough)
+                    {
+                        Rect positionRect = new Rect
+                            (
+                                objectScreenPoint.x - 20f, Screen.height - objectScreenPoint.y - 20f,
+                                objectScreenPoint.x + 40f, Screen.height - objectScreenPoint.y + 50f
+                            );
+                        GUI.color = espObject.ESPLabelColor;
+                        GUI.Label(positionRect, $"{espObject.ESPLabel} : {objectDistanceFromPlayer}");
+                    }
                 }
             }
         }

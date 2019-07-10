@@ -5,7 +5,6 @@ namespace SCPEE.NotEvil.Utils
 {
     public static class Misc
     {
-        // TODO: This is bad. Write a real GUI manager class.
         private static GUIStyle internalStyle;
 
         public static GameObject GetLocalPlayerGameObject()

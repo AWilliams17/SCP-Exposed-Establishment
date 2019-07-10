@@ -20,6 +20,7 @@ namespace SCPEE.NotEvil.HackModules
             if (isEnabled)
             {
                 Rect brandRect = Utils.Misc.CreateRect(eeBrand, anchor_x: Screen.width - 190, anchor_y: 10);
+                GUI.color = Color.red;
                 GUI.Label(brandRect, eeBrand);
             }
         }
