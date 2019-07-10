@@ -11,29 +11,43 @@ namespace SCPEE.NotEvil.HackModules
         public Rect ScannedObjectPosition { get; private set; }
         public Color ScannedObjectLabelColor { get; private set; }
 
-        public ScannedObject(string ObjectLabel, Vector3 ObjectPosition, Color LabelColor)
+        public ScannedObject(string ObjectLabel, Vector3 ObjectScreenPoint, Color LabelColor)
         {
             ScannedObjectLabel = ObjectLabel;
-            ScannedObjectPosition = CalculatePositionRect(ObjectPosition);
+            ScannedObjectPosition = CalculatePositionRect(ObjectScreenPoint);
             ScannedObjectLabelColor = LabelColor;
         }
 
-        private static Rect CalculatePositionRect(Vector3 ObjectPosition)
+        private static Rect CalculatePositionRect(Vector3 ObjectScreenPoint)
         {
             Rect positionRect = new Rect
                 (
-                    ObjectPosition.x - 20f, Screen.height - ObjectPosition.y - 20f,
-                    ObjectPosition.x + 40f, Screen.height - ObjectPosition.y + 50f
+                    ObjectScreenPoint.x - 20f, Screen.height - ObjectScreenPoint.y - 20f,
+                    ObjectScreenPoint.x + 40f, Screen.height - ObjectScreenPoint.y + 50f
                 );
             return positionRect;
         }
     }
-
+    
     public class ESP : NetworkBehaviour
     {
         private bool isEnabled = false;
         private GameObject localPlayer = null;
         private List<ScannedObject> scannedObjects = new List<ScannedObject>();
+
+        private void AddScannedObjectIfViable(Transform ScannedObjectTransform, string GUILabel, Color GUILabelColor)
+        {
+            Camera mainCamera = Camera.main;
+            Vector3 mainCameraPosition = mainCamera.transform.position;
+            Vector3 scannedObjectPosition = ScannedObjectTransform.position;
+            Vector3 scannedObjectScreenPoint = mainCamera.WorldToScreenPoint(scannedObjectPosition);
+            
+            if (!(Mathf.Abs(mainCameraPosition[2] - scannedObjectPosition[2]) > 300f) && scannedObjectScreenPoint.z > 0f)
+            {
+                ScannedObject scannedItem = new ScannedObject($"{GUILabel}", scannedObjectScreenPoint, GUILabelColor);
+                scannedObjects.Add(scannedItem);
+            }
+        }
 
         private void Update()
         {
@@ -43,9 +57,8 @@ namespace SCPEE.NotEvil.HackModules
             if (isEnabled)
             {
                 localPlayer = Utils.Misc.GetLocalPlayerGameObject();
-                if (localPlayer != null)
+                if (localPlayer != null && scannedObjects.Count == 0)
                 {
-                    scannedObjects.Clear();
                     ScanItems();
                     ScanPlayers();
                     ScanLocations();
@@ -55,13 +68,18 @@ namespace SCPEE.NotEvil.HackModules
 
         private void OnGUI()
         {
-            if (isEnabled)
+            if (isEnabled && scannedObjects.Count != 0)
             {
+                // Putting the scan calls here is the only way to keep
+                //  the labels from breaking. I assume there's a way around
+                //  this, but I'm not very familiar with Unity and this is a pet project so \o/
                 foreach (ScannedObject scannedObject in scannedObjects)
                 {
                     GUI.contentColor = scannedObject.ScannedObjectLabelColor;
                     GUI.Label(scannedObject.ScannedObjectPosition, scannedObject.ScannedObjectLabel);
                 }
+
+                scannedObjects.Clear();
             }
         }
 
@@ -73,24 +91,16 @@ namespace SCPEE.NotEvil.HackModules
                 "fusion"
             };
             
-            Camera mainCamera = Camera.main;
             foreach (Pickup itemPickup in FindObjectsOfType<Pickup>())
             {
                 Inventory playerInventory = localPlayer.GetComponent<Inventory>();
                 string itemLabel = playerInventory.availableItems[itemPickup.info.itemId].label;
-                Vector3 itemPosition = mainCamera.WorldToScreenPoint(itemPickup.transform.position);
-                int itemDistanceFromPlayer = (int)Vector3.Distance(mainCamera.transform.position, itemPickup.transform.position);
-                bool itemIsCloseEnough = itemDistanceFromPlayer <= 100;
-
-                if (itemIsCloseEnough && itemPosition.z > 0f)
+                
+                for (int i = 0; i < itemsOfInterest.Length; i++)
                 {
-                    for (int i = 0; i < itemsOfInterest.Length; i++)
+                    if (itemLabel.ToLower().Contains(itemsOfInterest[i]))
                     {
-                        if (itemLabel.ToLower().Contains(itemsOfInterest[i]))
-                        {
-                            ScannedObject scannedItem = new ScannedObject($"{itemLabel}:{itemDistanceFromPlayer}m", itemPosition, Color.cyan);
-                            scannedObjects.Add(scannedItem);
-                        }
+                        AddScannedObjectIfViable(itemPickup.transform, itemLabel, Color.cyan);
                     }
                 }
             }
@@ -98,8 +108,8 @@ namespace SCPEE.NotEvil.HackModules
 
         private void ScanPlayers()
         {
+            // Untested.
             GameObject[] allPlayers = Utils.Misc.GetPlayerGameObjects();
-            Camera mainCamera = Camera.main;
             foreach (GameObject player in allPlayers)
             {
                 NetworkIdentity playerNetworkIdentity = gameObject.GetComponent<NetworkIdentity>();
@@ -107,33 +117,30 @@ namespace SCPEE.NotEvil.HackModules
                 {
                     NicknameSync playerNicknameSync = player.transform.GetComponent<NicknameSync>();
                     CharacterClassManager playerClassManager = playerNicknameSync.GetComponent<CharacterClassManager>();
-                    Vector3 playerPosition = mainCamera.WorldToScreenPoint(player.transform.position);
+                    //Vector3 playerPosition = mainCamera.WorldToScreenPoint(player.transform.position);
 
                     string playerClassname = playerClassManager.klasy[playerClassManager.curClass].fullName;
-                    int playerDistanceFromLocalPlayer = (int)Vector3.Distance(mainCamera.transform.position, playerPosition);
-                    bool playerIsCloseEnough = playerDistanceFromLocalPlayer <= 100;
+                    //int playerDistanceFromLocalPlayer = (int)Vector3.Distance(mainCamera.transform.position, playerPosition);
+                    //bool playerIsCloseEnough = playerDistanceFromLocalPlayer <= 100;
+                    
 
-                    if (playerIsCloseEnough && playerPosition.z > 0f)
-                    {
-                        ScannedObject scannedPlayer = new ScannedObject($"{playerClassname}:{playerDistanceFromLocalPlayer}m", playerPosition, Color.green);
-                        scannedObjects.Add(scannedPlayer);
-                    }
+                    AddScannedObjectIfViable(player.transform, playerClassname, Color.green);
+                    
+                    //if (playerIsCloseEnough && playerPosition.z > 0f)
+                    //{
+                    //    ScannedObject scannedPlayer = new ScannedObject($"{playerClassname}:{playerDistanceFromLocalPlayer}m", playerPosition, Color.green);
+                    //    scannedObjects.Add(scannedPlayer);
+                    //}
                 }
             }
         }
-        
+
+
         private void ScanLocations()
         {
-            Camera mainCamera = Camera.main;
-
             // SCP 914
             GameObject scp914 = GameObject.FindGameObjectWithTag("914_use");
-            Vector3 scp914Position = mainCamera.WorldToScreenPoint(scp914.transform.position);
-            if (scp914Position.z > 0f)
-            {
-                ScannedObject scanned914Location = new ScannedObject($"SCP 914", scp914Position, Color.yellow);
-                scannedObjects.Add(scanned914Location);
-            }
+            AddScannedObjectIfViable(scp914.transform, "SCP 914", Color.yellow);
 
             // Elevators
             Lift[] lifts = FindObjectsOfType<Lift>();
@@ -141,28 +148,22 @@ namespace SCPEE.NotEvil.HackModules
             {
                 foreach (Lift.Elevator elevator in lifts[i].elevators)
                 {
-                    Vector3 elevatorPosition = mainCamera.WorldToScreenPoint(elevator.door.transform.position);
-                    if (elevatorPosition.z > 0f)
-                    {
-                        ScannedObject scannedElevator = new ScannedObject($"Elevator", elevatorPosition, Color.blue);
-                        scannedObjects.Add(scannedElevator);
-                    }
+                    AddScannedObjectIfViable(elevator.door.transform, "Elevator", Color.blue);
                 }
             }
-
+            
             // Pocket Dimension Exits
-            foreach (PocketDimensionTeleport pdteleport in FindObjectsOfType<PocketDimensionTeleport>())
+            foreach (PocketDimensionTeleport pdTeleport in FindObjectsOfType<PocketDimensionTeleport>())
             {
-                Vector3 teleportLocation = mainCamera.WorldToScreenPoint(pdteleport.transform.position);
-                int playerDistanceFromTeleporter = (int)Vector3.Distance(mainCamera.transform.position, teleportLocation);
-                bool teleporterIsCloseEnough = playerDistanceFromTeleporter <= 50;
-
-                if (teleporterIsCloseEnough && teleportLocation.z > 0f)
+                PocketDimensionTeleport.PDTeleportType teleporterType = pdTeleport.GetTeleportType();
+                if (teleporterType == PocketDimensionTeleport.PDTeleportType.Exit)
                 {
-                    ScannedObject scannedTeleporter = new ScannedObject($"Elevator:{playerDistanceFromTeleporter}m", teleportLocation, Color.white);
-                    scannedObjects.Add(scannedTeleporter);
+                    AddScannedObjectIfViable(pdTeleport.transform, "Teleporter Out", Color.white);
                 }
             }
         }
     }
 }
+
+
+
