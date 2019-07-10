@@ -40,54 +40,9 @@ namespace SCPEE.NotEvil.HackModules
                 if (isEnabled && localPlayer != null)
                 {
                     espObjects.Clear();
-
-                    string[] itemsOfInterest = {
-                        "card", "p90", "com15", "rifle", "usp", "logicier",
-                        "grenade", "pistol", "scorpion", "mp7", "epsilon",
-                        "fusion"
-                    };
-
-                    // Item pickups
-                    foreach (Pickup itemPickup in FindObjectsOfType<Pickup>())
-                    {
-                        Inventory playerInventory = localPlayer.GetComponent<Inventory>();
-                        string itemLabel = playerInventory.availableItems[itemPickup.info.itemId].label;
-
-                        for (int i = 0; i < itemsOfInterest.Length; i++)
-                        {
-                            if (itemLabel.ToLower().Contains(itemsOfInterest[i]))
-                            {
-                                ESPObject viableItemObject = new ESPObject(itemLabel, Color.cyan, itemPickup.gameObject, 100);
-                                espObjects.Add(viableItemObject);
-                            }
-                        }
-                    }
-
-                    // SCP 914
-                    ESPObject scp914GameObject = new ESPObject("SCP 914", Color.yellow, GameObject.FindGameObjectWithTag("914_use"), 150);
-                    espObjects.Add(scp914GameObject);
-
-                    // Elevators
-                    Lift[] lifts = FindObjectsOfType<Lift>();
-                    for (int i = 0; i < lifts.Length; i++)
-                    {
-                        foreach (Lift.Elevator elevator in lifts[i].elevators)
-                        {
-                            ESPObject elevatorObject = new ESPObject("Elevator", Color.blue, elevator.door.gameObject, 200);
-                            espObjects.Add(elevatorObject);
-                        }
-                    }
-
-                    // Pocket Dimension Exits
-                    foreach (PocketDimensionTeleport pdTeleport in FindObjectsOfType<PocketDimensionTeleport>())
-                    {
-                        PocketDimensionTeleport.PDTeleportType teleporterType = pdTeleport.GetTeleportType();
-                        if (teleporterType == PocketDimensionTeleport.PDTeleportType.Exit)
-                        {
-                            ESPObject exitTeleporterObject = new ESPObject("Exit", Color.white, pdTeleport.gameObject, 75);
-                            espObjects.Add(exitTeleporterObject);
-                        }
-                    }
+                    ScanForItems();
+                    ScanForPlayers();
+                    ScanForLocations();
                 }
 
                 yield return new WaitForSeconds(4);
@@ -122,6 +77,78 @@ namespace SCPEE.NotEvil.HackModules
                     GUI.color = espObject.ESPLabelColor;
                     GUI.Label(positionRect, $"{espObject.ESPLabel} : {objectDistanceFromPlayer}");
 
+                }
+            }
+        }
+
+        private void ScanForItems()
+        {
+            string[] itemsOfInterest = 
+                {
+                    "card", "p90", "com15", "rifle", "usp", "logicier",
+                    "grenade", "pistol", "scorpion", "mp7", "epsilon",
+                    "fusion"
+                };
+            
+            foreach (Pickup itemPickup in FindObjectsOfType<Pickup>())
+            {
+                Inventory playerInventory = localPlayer.GetComponent<Inventory>();
+                string itemLabel = playerInventory.availableItems[itemPickup.info.itemId].label;
+
+                for (int i = 0; i < itemsOfInterest.Length; i++)
+                {
+                    if (itemLabel.ToLower().Contains(itemsOfInterest[i]))
+                    {
+                        ESPObject viableItemObject = new ESPObject(itemLabel, Color.cyan, itemPickup.gameObject, 100);
+                        espObjects.Add(viableItemObject);
+                    }
+                }
+            }
+        }
+
+        private void ScanForPlayers()
+        {
+            GameObject[] allPlayers = Utils.Misc.GetPlayerGameObjects();
+            foreach (GameObject player in allPlayers)
+            {
+                NetworkIdentity playerNetworkIdentity = gameObject.GetComponent<NetworkIdentity>();
+                if (!playerNetworkIdentity.isLocalPlayer)
+                {
+                    NicknameSync playerNicknameSync = player.transform.GetComponent<NicknameSync>();
+                    CharacterClassManager playerClassManager = playerNicknameSync.GetComponent<CharacterClassManager>();
+                    string playerClassname = playerClassManager.klasy[playerClassManager.curClass].fullName;
+                    
+                    ESPObject playerObject = new ESPObject(playerClassname, Color.green, player, 100);
+                    espObjects.Add(playerObject);
+                }
+            }
+        }
+
+        private void ScanForLocations()
+        {
+            // SCP 914
+            ESPObject scp914GameObject = new ESPObject("SCP 914", Color.yellow, GameObject.FindGameObjectWithTag("914_use"), 150);
+            espObjects.Add(scp914GameObject);
+
+            // Elevators
+            Lift[] lifts = FindObjectsOfType<Lift>();
+            for (int i = 0; i < lifts.Length; i++)
+            {
+                foreach (Lift.Elevator elevator in lifts[i].elevators)
+                {
+                    ESPObject elevatorObject = new ESPObject("Elevator", Color.blue, elevator.door.gameObject, 200);
+                    espObjects.Add(elevatorObject);
+                }
+            }
+
+            // Pocket Dimension Exits
+            foreach (PocketDimensionTeleport pdTeleport in FindObjectsOfType<PocketDimensionTeleport>())
+            {
+                PocketDimensionTeleport.PDTeleportType teleporterType = pdTeleport.GetTeleportType();
+                if (teleporterType == PocketDimensionTeleport.PDTeleportType.Exit)
+                {
+                    ESPObject exitTeleporterObject = new ESPObject("Exit", Color.white, pdTeleport.gameObject, 75);
+                    espObjects.Add(exitTeleporterObject);
                 }
             }
         }
