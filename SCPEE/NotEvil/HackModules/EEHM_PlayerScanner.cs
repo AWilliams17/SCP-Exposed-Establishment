@@ -1,8 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.Networking;
 using System.Linq;
-using System.Collections;
-using System.Collections.Generic;
 
 namespace SCPEE.NotEvil.HackModules
 {
@@ -12,48 +10,60 @@ namespace SCPEE.NotEvil.HackModules
     /// </summary>
     public class PlayerScanner : NetworkBehaviour
     {
-        private bool isEnabled = false;
+        private int aliveMTF = 0;
+        private int aliveCI = 0;
+        private int aliveGuards = 0;
+        private int aliveDBoys = 0;
+        private int aliveScientists = 0;
+        private int aliveSCP = 0;
+        private string scanResultString = "";
         private GameObject localPlayer = null;
-        private List<GameObject> players = new List<GameObject>();
-        int aliveMTF, aliveCI, aliveGuards, aliveDBoys, aliveScientists, aliveSCP;
-
-        private void Awake()
-        {
-            StartCoroutine("DoScans");
-        }
-
-        IEnumerator DoScans()
-        {
-            while (true)
-            {
-                players.Clear();
-                localPlayer = Utils.Misc.GetLocalPlayerGameObject();
-
-                if (isEnabled && localPlayer != null)
-                {
-                    ScanRemainingPlayers();
-                }
-
-                yield return new WaitForSeconds(0.5f);
-            }
-        }
+        private bool isEnabled = false;
 
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.Keypad1))
                 isEnabled = !isEnabled;
+
+            if (isEnabled)
+            {
+                localPlayer = Utils.Misc.GetLocalPlayerGameObject();
+                if (localPlayer == null)
+                    scanResultString = "PlayerScanner is on, but you are not ingame.";
+                else
+                    ScanRemainingPlayers();
+            }
         }
 
         private void OnGUI()
         {
             if (isEnabled)
             {
-                aliveMTF = aliveCI = aliveGuards = aliveDBoys = aliveScientists = aliveSCP = 0;
-                foreach (GameObject player in players)
+                Rect scanLabelRect = Utils.Misc.CreateRect(scanResultString, anchor_x: 0, anchor_y: 20);
+                GUI.Label(scanLabelRect, scanResultString);
+            }
+        }
+
+        private void ClearScanResults()
+        {
+            aliveMTF = aliveCI = aliveGuards = aliveDBoys = aliveScientists = aliveSCP = 0;
+            scanResultString = "";
+        }
+
+        /// <summary>
+        /// Scans through players and detects their class types, adding to a list of living
+        /// and setting the scanResultString.
+        /// </summary>
+        private void ScanRemainingPlayers()
+        {
+            ClearScanResults();
+            GameObject[] allPlayers = Utils.Misc.GetPlayerGameObjects();
+            foreach (GameObject player in allPlayers)
+            {
+                if (!gameObject.GetComponent<NetworkIdentity>().isLocalPlayer)
                 {
-                    NicknameSync playerNicknameSync = player.transform.GetComponent<NicknameSync>();
-                    CharacterClassManager playerClassManager = playerNicknameSync.GetComponent<CharacterClassManager>();
-                    int playerClass = playerClassManager.curClass;
+                    int playerClass = player.GetComponent<CharacterClassManager>().curClass;
+                    // TODO: Better way. This works for now though.
                     if ((new[] { 4, 11, 12, 13 }).Contains(playerClass))
                         aliveMTF += 1;
                     else if ((new[] { 5, 10, 7, 9, 3, 0, 17, 16 }).Contains(playerClass))
@@ -66,37 +76,16 @@ namespace SCPEE.NotEvil.HackModules
                         aliveGuards += 1;
                     else if (playerClass == ClassTypes.Scientist)
                         aliveScientists += 1;
-
-                    string scanResultString =
-                        $"-Player Scan Results-\n" +
-                        $"  MTF: {aliveMTF}\n" +
-                        $"  CI: {aliveCI}\n" +
-                        $"  Guards: {aliveGuards}\n" +
-                        $"  DBoys: {aliveDBoys}\n" +
-                        $"  Scientists: {aliveScientists}\n" +
-                        $"  SCP: {aliveSCP}";
-
-                    Rect scanLabelRect = Utils.Misc.CreateRect(scanResultString, anchor_x: 0, anchor_y: 20);
-                    GUI.color = Color.red;
-                    GUI.Label(scanLabelRect, scanResultString);
                 }
             }
-        }
-
-        /// <summary>
-        /// Grabs all GameObjects representing players - adds them to the players list for iteration.
-        /// </summary>
-        private void ScanRemainingPlayers()
-        {
-            GameObject[] allPlayers = Utils.Misc.GetPlayerGameObjects();
-            foreach (GameObject player in allPlayers)
-            {
-                NetworkIdentity playerNetworkIdentity = gameObject.GetComponent<NetworkIdentity>();
-                if (!playerNetworkIdentity.isLocalPlayer)
-                {
-                    players.Add(player);
-                }
-            }
+            scanResultString =
+                $"-Player Scan Results-\n" +
+                $"  MTF: {aliveMTF}\n" +
+                $"  CI: {aliveCI}\n" +
+                $"  Guards: {aliveGuards}\n" +
+                $"  DBoys: {aliveDBoys}\n" +
+                $"  Scientists: {aliveScientists}\n" +
+                $"  SCP: {aliveSCP}";
         }
     }
 }

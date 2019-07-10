@@ -36,7 +36,6 @@ namespace SCPEE.NotEvil.HackModules
     public class ESP : NetworkBehaviour
     {
         private bool isEnabled = false;
-        private GameObject localPlayer = null;
         private List<ESPObject> espObjects = new List<ESPObject>();
 
         private void Awake()
@@ -51,8 +50,7 @@ namespace SCPEE.NotEvil.HackModules
                 // We clear the espObjects list so the new scan results aren't tacked onto the old ones.
                 // Also, check if the player is ingame, getting around a lot of unnecessary calls.
                 espObjects.Clear();
-                localPlayer = Utils.Misc.GetLocalPlayerGameObject();
-                if (isEnabled && localPlayer != null)
+                if (isEnabled)
                 {
                     ScanForItems();
                     ScanForPlayers();
@@ -71,37 +69,34 @@ namespace SCPEE.NotEvil.HackModules
 
         private void OnGUI()
         {
-            if (isEnabled)
+            foreach (ESPObject espObject in espObjects)
             {
-                foreach (ESPObject espObject in espObjects)
-                {
-                    // mainCameraPosition is essentially just where the player is currently looking, and
-                    //   the origin of the camera... So basically the player's position as well.
-                    // objectScreenPoint is basically just where the object is on the screen. 
-                    //   Including how far away it is (from the camera's perspective).
-                    // So what we do is, check if the object is within range, and if it is, create a new
-                    //   Rect which will display 'on top' of the object. The subtractions are just to control
-                    //   the position it's in. I want it to be slightly in the middle.
-                    Camera mainCamera = Camera.main;
-                    Vector3 mainCameraPosition = mainCamera.transform.position;
-                    Vector3 objectPosition = espObject.ESPGameObject.transform.position;
-                    Vector3 objectScreenPoint = mainCamera.WorldToScreenPoint(objectPosition);
-                    int objectDistanceFromPlayer = (int)Vector3.Distance(mainCameraPosition, objectPosition);
+                // mainCameraPosition is essentially just where the player is currently looking, and
+                //   the origin of the camera... So basically the player's position as well.
+                // objectScreenPoint is basically just where the object is on the screen. 
+                //   Including how far away it is (from the camera's perspective).
+                // So what we do is, check if the object is within range, and if it is, create a new
+                //   Rect which will display 'on top' of the object. The subtractions are just to control
+                //   the position it's in. I want it to be slightly in the middle.
+                Camera mainCamera = Camera.main;
+                Vector3 mainCameraPosition = mainCamera.transform.position;
+                Vector3 objectPosition = espObject.ESPGameObject.transform.position;
+                Vector3 objectScreenPoint = mainCamera.WorldToScreenPoint(objectPosition);
+                int objectDistanceFromPlayer = (int)Vector3.Distance(mainCameraPosition, objectPosition);
 
-                    // Couldn't think of a better name for these two bools. They literally exist solely because I didn't
-                    //   want the conditions being checked to cluster up in the if statement and take up space.
-                    bool objectIsWithinRange = !(Mathf.Abs(mainCameraPosition[2] - objectPosition[2]) > 300f) && objectScreenPoint.z > 0f;
-                    bool objectIsCloseEnough = objectDistanceFromPlayer <= espObject.ESPMinimumDistance;
-                    if (objectIsWithinRange && objectIsCloseEnough)
-                    {
-                        Rect positionRect = new Rect
-                            (
-                                objectScreenPoint.x - 20f, Screen.height - objectScreenPoint.y - 20f,
-                                objectScreenPoint.x + 40f, Screen.height - objectScreenPoint.y + 50f
-                            );
-                        GUI.color = espObject.ESPLabelColor;
-                        GUI.Label(positionRect, $"{espObject.ESPLabel} : {objectDistanceFromPlayer}");
-                    }
+                // Couldn't think of a better name for these two bools. They literally exist solely because I didn't
+                //   want the conditions being checked to cluster up in the if statement and take up space.
+                bool objectIsWithinRange = !(Mathf.Abs(mainCameraPosition[2] - objectPosition[2]) > 300f) && objectScreenPoint.z > 0f;
+                bool objectIsCloseEnough = objectDistanceFromPlayer <= espObject.ESPMinimumDistance;
+                if (objectIsWithinRange && objectIsCloseEnough)
+                {
+                    Rect positionRect = new Rect
+                        (
+                            objectScreenPoint.x - 20f, Screen.height - objectScreenPoint.y - 20f,
+                            objectScreenPoint.x + 40f, Screen.height - objectScreenPoint.y + 50f
+                        );
+                    GUI.color = espObject.ESPLabelColor;
+                    GUI.Label(positionRect, $"{espObject.ESPLabel} : {objectDistanceFromPlayer}");
                 }
             }
         }
@@ -120,6 +115,7 @@ namespace SCPEE.NotEvil.HackModules
             
             foreach (Pickup itemPickup in FindObjectsOfType<Pickup>())
             {
+                GameObject localPlayer = Utils.Misc.GetLocalPlayerGameObject();
                 Inventory playerInventory = localPlayer.GetComponent<Inventory>();
                 string itemLabel = playerInventory.availableItems[itemPickup.info.itemId].label;
 
@@ -156,14 +152,14 @@ namespace SCPEE.NotEvil.HackModules
         }
 
         /// <summary>
-        /// Scans for locations of importance, which are (currently just) SCP-914, Elevators, and Pocket Dimension exits.
+        /// Scans for locations of importance, which are (currently just) SCP-914, the Intercom, Elevators, and Pocket Dimension exits.
         /// </summary>
         private void ScanForLocations()
         {
             // SCP 914
-            ESPObject scp914GameObject = new ESPObject("SCP 914", Color.yellow, GameObject.FindGameObjectWithTag("914_use"), 150);
-            espObjects.Add(scp914GameObject);
-
+            ESPObject scp914Object = new ESPObject("SCP 914", Color.yellow, GameObject.FindGameObjectWithTag("914_use"), 150);
+            espObjects.Add(scp914Object);
+            
             // Elevators
             Lift[] lifts = FindObjectsOfType<Lift>();
             for (int i = 0; i < lifts.Length; i++)
