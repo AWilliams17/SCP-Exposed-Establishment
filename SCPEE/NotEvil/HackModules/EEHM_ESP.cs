@@ -12,6 +12,14 @@ namespace SCPEE.NotEvil.HackModules
         public Color ESPLabelColor { get; private set; }
         public int ESPMinimumDistance { get; private set; }
 
+        /// <summary>
+        /// Represents an object (player, item, location, etc) which 
+        /// is to be rendered in the OnGUI() call.
+        /// </summary>
+        /// <param name="Label">The label which is displayed over the object on the screen.</param>
+        /// <param name="LabelColor">The color of the aforementioned label.</param>
+        /// <param name="GameObject">The actual GameObject of the thing being shown.</param>
+        /// <param name="MinimumDistance">How close to the position the player is before it shows up on screen.</param>
         public ESPObject(string Label, Color LabelColor, GameObject GameObject, int MinimumDistance)
         {
             ESPLabel = Label;
@@ -21,6 +29,10 @@ namespace SCPEE.NotEvil.HackModules
         }
     }
 
+    /// <summary>
+    /// The Exposed Establishment ESP.
+    /// Displays close items, elevators, players, and locations.
+    /// </summary>
     public class ESP : NetworkBehaviour
     {
         private bool isEnabled = false;
@@ -36,6 +48,8 @@ namespace SCPEE.NotEvil.HackModules
         {
             while (true)
             {
+                // We clear the espObjects list so the new scan results aren't tacked onto the old ones.
+                // Also, check if the player is ingame, getting around a lot of unnecessary calls.
                 espObjects.Clear();
                 localPlayer = Utils.Misc.GetLocalPlayerGameObject();
                 if (isEnabled && localPlayer != null)
@@ -61,12 +75,21 @@ namespace SCPEE.NotEvil.HackModules
             {
                 foreach (ESPObject espObject in espObjects)
                 {
+                    // mainCameraPosition is essentially just where the player is currently looking, and
+                    //   the origin of the camera... So basically the player's position as well.
+                    // objectScreenPoint is basically just where the object is on the screen. 
+                    //   Including how far away it is (from the camera's perspective).
+                    // So what we do is, check if the object is within range, and if it is, create a new
+                    //   Rect which will display 'on top' of the object. The subtractions are just to control
+                    //   the position it's in. I want it to be slightly in the middle.
                     Camera mainCamera = Camera.main;
                     Vector3 mainCameraPosition = mainCamera.transform.position;
                     Vector3 objectPosition = espObject.ESPGameObject.transform.position;
                     Vector3 objectScreenPoint = mainCamera.WorldToScreenPoint(objectPosition);
                     int objectDistanceFromPlayer = (int)Vector3.Distance(mainCameraPosition, objectPosition);
 
+                    // Couldn't think of a better name for these two bools. They literally exist solely because I didn't
+                    //   want the conditions being checked to cluster up in the if statement and take up space.
                     bool objectIsWithinRange = !(Mathf.Abs(mainCameraPosition[2] - objectPosition[2]) > 300f) && objectScreenPoint.z > 0f;
                     bool objectIsCloseEnough = objectDistanceFromPlayer <= espObject.ESPMinimumDistance;
                     if (objectIsWithinRange && objectIsCloseEnough)
@@ -83,6 +106,9 @@ namespace SCPEE.NotEvil.HackModules
             }
         }
 
+        /// <summary>
+        /// Scans for items of interest, which are (currently just) keycards and guns.
+        /// </summary>
         private void ScanForItems()
         {
             string[] itemsOfInterest = 
@@ -108,6 +134,9 @@ namespace SCPEE.NotEvil.HackModules
             }
         }
 
+        /// <summary>
+        /// Scans for players - uses their character's class name as the label.
+        /// </summary>
         private void ScanForPlayers()
         {
             GameObject[] allPlayers = Utils.Misc.GetPlayerGameObjects();
@@ -126,6 +155,9 @@ namespace SCPEE.NotEvil.HackModules
             }
         }
 
+        /// <summary>
+        /// Scans for locations of importance, which are (currently just) SCP-914, Elevators, and Pocket Dimension exits.
+        /// </summary>
         private void ScanForLocations()
         {
             // SCP 914

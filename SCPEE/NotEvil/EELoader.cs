@@ -8,6 +8,10 @@ T GameObject.GetComponent<T>() (and its derivatives) will search for the Compone
 
 namespace SCPEE.NotEvil
 {
+    /// <summary>
+    /// The 'loader' which creates the hack's GameObject, attaches all the hack 'modules' to it,
+    /// and then attaches the hack's GameObject to the game.
+    /// </summary>
     public class EELoader
     {
         private static GameObject _exposedEstablishment;

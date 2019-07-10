@@ -6,12 +6,16 @@ using System.Collections.Generic;
 
 namespace SCPEE.NotEvil.HackModules
 {
+    /// <summary>
+    /// The Exposed Establishment PlayerScanner.
+    /// It tells the user how many players of each character class are currently alive.
+    /// </summary>
     public class PlayerScanner : NetworkBehaviour
     {
         private bool isEnabled = false;
         private GameObject localPlayer = null;
         private List<GameObject> players = new List<GameObject>();
-        private int aliveMTF, aliveCI, aliveGuards, aliveDBoys, aliveScientists, aliveSCP = 0;
+        int aliveMTF, aliveCI, aliveGuards, aliveDBoys, aliveScientists, aliveSCP;
 
         private void Awake()
         {
@@ -44,7 +48,7 @@ namespace SCPEE.NotEvil.HackModules
         {
             if (isEnabled)
             {
-                int aliveMTF = aliveCI = aliveGuards = aliveDBoys = aliveScientists = aliveSCP = 0;
+                aliveMTF = aliveCI = aliveGuards = aliveDBoys = aliveScientists = aliveSCP = 0;
                 foreach (GameObject player in players)
                 {
                     NicknameSync playerNicknameSync = player.transform.GetComponent<NicknameSync>();
@@ -79,6 +83,9 @@ namespace SCPEE.NotEvil.HackModules
             }
         }
 
+        /// <summary>
+        /// Grabs all GameObjects representing players - adds them to the players list for iteration.
+        /// </summary>
         private void ScanRemainingPlayers()
         {
             GameObject[] allPlayers = Utils.Misc.GetPlayerGameObjects();

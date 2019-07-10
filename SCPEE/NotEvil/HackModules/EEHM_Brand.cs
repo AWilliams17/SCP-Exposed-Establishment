@@ -2,10 +2,14 @@
 
 namespace SCPEE.NotEvil.HackModules
 {
+    /// <summary>
+    /// Does nothing at all other than displays "SCP Exposed Establishment"
+    /// up in the corner of the screen.
+    /// </summary>
     public class Brand : MonoBehaviour
     {
         private bool isEnabled = true;
-        private string eeBrand = "SCP Exposed Establishment";
+        private const string eeBrand = "SCP Exposed Establishment";
 
         private void Update()
         {
