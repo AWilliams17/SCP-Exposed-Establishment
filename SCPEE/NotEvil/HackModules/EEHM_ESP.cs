@@ -47,8 +47,6 @@ namespace SCPEE.NotEvil.HackModules
         {
             while (true)
             {
-                // We clear the espObjects list so the new scan results aren't tacked onto the old ones.
-                // Also, check if the player is ingame, getting around a lot of unnecessary calls.
                 espObjects.Clear();
                 if (isEnabled)
                 {
@@ -71,6 +69,9 @@ namespace SCPEE.NotEvil.HackModules
         {
             foreach (ESPObject espObject in espObjects)
             {
+                // Skip dead game objects.
+                if (espObject.ESPGameObject == null && !ReferenceEquals(espObject.ESPGameObject, null)) continue;
+
                 // mainCameraPosition is essentially just where the player is currently looking, and
                 //   the origin of the camera... So basically the player's position as well.
                 // objectScreenPoint is basically just where the object is on the screen. 
@@ -88,6 +89,8 @@ namespace SCPEE.NotEvil.HackModules
                 //   want the conditions being checked to cluster up in the if statement and take up space.
                 bool objectIsWithinRange = !(Mathf.Abs(mainCameraPosition[2] - objectPosition[2]) > 300f) && objectScreenPoint.z > 0f;
                 bool objectIsCloseEnough = objectDistanceFromPlayer <= espObject.ESPMinimumDistance;
+                bool espObjectRepresentsPlayer = espObject.ESPGameObject.tag == "Player";
+
                 if (objectIsWithinRange && objectIsCloseEnough)
                 {
                     Rect positionRect = new Rect
@@ -95,8 +98,24 @@ namespace SCPEE.NotEvil.HackModules
                             objectScreenPoint.x - 20f, Screen.height - objectScreenPoint.y - 20f,
                             objectScreenPoint.x + 40f, Screen.height - objectScreenPoint.y + 50f
                         );
-                    GUI.color = espObject.ESPLabelColor;
-                    GUI.Label(positionRect, $"{espObject.ESPLabel} : {objectDistanceFromPlayer}");
+
+                    // Hack to get around player character classnames going out of sync if 
+                    // directly used as the value of the 'Label' attribute in ESPObject.
+                    if (espObjectRepresentsPlayer)
+                    {
+                        NicknameSync playerNicknameSync = espObject.ESPGameObject.transform.GetComponent<NicknameSync>();
+                        CharacterClassManager playerClassManager = playerNicknameSync.GetComponent<CharacterClassManager>();
+                        string playerClassname = playerClassManager.klasy[playerClassManager.curClass].fullName;
+                        string playerClassnameLower = playerClassname.ToLower().Split(' ')[0];
+                        
+                        GUI.color = Utils.Misc.ColorFromClassname(playerClassnameLower);
+                        GUI.Label(positionRect, $"{playerClassname} : {objectDistanceFromPlayer}");
+                    }
+                    else
+                    {
+                        GUI.color = espObject.ESPLabelColor;
+                        GUI.Label(positionRect, $"{espObject.ESPLabel} : {objectDistanceFromPlayer}");
+                    }
                 }
             }
         }
@@ -110,7 +129,7 @@ namespace SCPEE.NotEvil.HackModules
                 {
                     "card", "p90", "com15", "rifle", "usp", "logicier",
                     "grenade", "pistol", "scorpion", "mp7", "epsilon",
-                    "fusion"
+                    "fusion", "project"
                 };
             
             foreach (Pickup itemPickup in FindObjectsOfType<Pickup>())
@@ -141,11 +160,10 @@ namespace SCPEE.NotEvil.HackModules
                 NetworkIdentity playerNetworkIdentity = gameObject.GetComponent<NetworkIdentity>();
                 if (!playerNetworkIdentity.isLocalPlayer)
                 {
-                    NicknameSync playerNicknameSync = player.transform.GetComponent<NicknameSync>();
-                    CharacterClassManager playerClassManager = playerNicknameSync.GetComponent<CharacterClassManager>();
-                    string playerClassname = playerClassManager.klasy[playerClassManager.curClass].fullName;
-                    
-                    ESPObject playerObject = new ESPObject(playerClassname, Color.green, player, 100);
+                    // Class names go out of sync frequently, so using them as a label here leads
+                    // to issues. The label will be handled in OnGui. As will its color.
+                    // TODO: Find a way around this. (there probably isn't one using this design).
+                    ESPObject playerObject = new ESPObject(null, Color.black, player, 100);
                     espObjects.Add(playerObject);
                 }
             }
@@ -157,7 +175,7 @@ namespace SCPEE.NotEvil.HackModules
         private void ScanForLocations()
         {
             // SCP 914
-            ESPObject scp914Object = new ESPObject("SCP 914", Color.yellow, GameObject.FindGameObjectWithTag("914_use"), 150);
+            ESPObject scp914Object = new ESPObject("SCP 914", Color.white, GameObject.FindGameObjectWithTag("914_use"), 150);
             espObjects.Add(scp914Object);
             
             // Elevators
@@ -166,7 +184,7 @@ namespace SCPEE.NotEvil.HackModules
             {
                 foreach (Lift.Elevator elevator in lifts[i].elevators)
                 {
-                    ESPObject elevatorObject = new ESPObject("Elevator", Color.blue, elevator.door.gameObject, 200);
+                    ESPObject elevatorObject = new ESPObject("Elevator", Color.white, elevator.door.gameObject, 200);
                     espObjects.Add(elevatorObject);
                 }
             }
@@ -174,10 +192,9 @@ namespace SCPEE.NotEvil.HackModules
             // Pocket Dimension Exits
             foreach (PocketDimensionTeleport pdTeleport in FindObjectsOfType<PocketDimensionTeleport>())
             {
-                PocketDimensionTeleport.PDTeleportType teleporterType = pdTeleport.GetTeleportType();
-                if (teleporterType == PocketDimensionTeleport.PDTeleportType.Exit)
+                if (pdTeleport.GetTeleportType() == PocketDimensionTeleport.PDTeleportType.Exit)
                 {
-                    ESPObject exitTeleporterObject = new ESPObject("Exit", Color.white, pdTeleport.gameObject, 75);
+                    ESPObject exitTeleporterObject = new ESPObject("Exit", Color.white, pdTeleport.gameObject, 100);
                     espObjects.Add(exitTeleporterObject);
                 }
             }
