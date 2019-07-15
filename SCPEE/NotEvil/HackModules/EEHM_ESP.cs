@@ -12,6 +12,8 @@ namespace SCPEE.NotEvil.HackModules
         public Color ESPLabelColor { get; private set; }
         public int ESPMinimumDistance { get; private set; }
 
+        private static Dictionary<string, Color> characterLabelColors = new Dictionary<string, Color>();
+
         /// <summary>
         /// Represents an object (player, item, location, etc) which 
         /// is to be rendered in the OnGUI() call.
@@ -142,7 +144,7 @@ namespace SCPEE.NotEvil.HackModules
                 {
                     if (itemLabel.ToLower().Contains(itemsOfInterest[i]))
                     {
-                        ESPObject viableItemObject = new ESPObject(itemLabel, Color.cyan, itemPickup.gameObject, 100);
+                        ESPObject viableItemObject = new ESPObject(itemLabel, Color.cyan, itemPickup.gameObject, 125);
                         espObjects.Add(viableItemObject);
                     }
                 }
@@ -163,7 +165,7 @@ namespace SCPEE.NotEvil.HackModules
                     // Class names go out of sync frequently, so using them as a label here leads
                     // to issues. The label will be handled in OnGui. As will its color.
                     // TODO: Find a way around this. (there probably isn't one using this design).
-                    ESPObject playerObject = new ESPObject(null, Color.black, player, 100);
+                    ESPObject playerObject = new ESPObject(null, Color.black, player, 125);
                     espObjects.Add(playerObject);
                 }
             }
@@ -175,7 +177,7 @@ namespace SCPEE.NotEvil.HackModules
         private void ScanForLocations()
         {
             // SCP 914
-            ESPObject scp914Object = new ESPObject("SCP 914", Color.white, GameObject.FindGameObjectWithTag("914_use"), 150);
+            ESPObject scp914Object = new ESPObject("SCP 914", Color.white, GameObject.FindGameObjectWithTag("914_use"), 180);
             espObjects.Add(scp914Object);
             
             // Elevators
@@ -184,7 +186,7 @@ namespace SCPEE.NotEvil.HackModules
             {
                 foreach (Lift.Elevator elevator in lifts[i].elevators)
                 {
-                    ESPObject elevatorObject = new ESPObject("Elevator", Color.white, elevator.door.gameObject, 200);
+                    ESPObject elevatorObject = new ESPObject("Elevator", Color.white, elevator.door.gameObject, 250);
                     espObjects.Add(elevatorObject);
                 }
             }
