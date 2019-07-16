@@ -56,40 +56,5 @@ namespace SCPEE.NotEvil.Utils
             newRect.y = anchor_y;
             return newRect;
         }
-
-        /// <summary>
-        /// Specifically made for the player ESP. Attempts to associate
-        /// the substring of a player's lowercase classname with a color value.
-        /// If no such value exists for a given substring, a default color of Magenta is returned.
-        /// </summary>
-        /// <param name="CharacterClassName">The character class to get the color for, EG: 'SCP-173' -> red</param>
-        /// <returns>The appropriate color from the classname, or magenta if a color could not be found.</returns>
-        public static Color ColorFromClassname(string CharacterClassName)
-        {
-            // scp-173 => scp ~ nine tailed fox cadet => nine, etc
-            string classSubstring = LowercaseClassname.Contains("-") ? 
-                LowercaseClassname.Split('-')[0] : LowercaseClassname.Split(' ')[0];
-
-
-
-            /*
-            // I hate doing if branches like this, but my original idea of using a dictionary seemed
-            // like a bigger pain from a usage standpoint than a programming one, so whatever.
-            // TODO: I'll keep this until I figure up something better. Or until it starts nagging at my mind.
-            if (LowercaseClassname.Contains("scp"))
-                return Color.red;
-            else if (LowercaseClassname.Contains("nine"))
-                return Color.blue;
-            else if (LowercaseClassname.Contains("chaos"))
-                return Color.green;
-            else if (LowercaseClassname.Contains("facility"))
-                return Color.grey;
-            else if (LowercaseClassname == "scientist")
-                return Color.yellow;
-            else if (LowercaseClassname.Contains("class"))
-                return new Color(1.0f, 0.64f, 0.0f);
-            else return Color.magenta;
-            */
-        }
     }
 }

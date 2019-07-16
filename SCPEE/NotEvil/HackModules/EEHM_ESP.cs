@@ -5,29 +5,125 @@ using System.Collections;
 
 namespace SCPEE.NotEvil.HackModules
 {
-    internal class ESPObject
+    internal class ESPGenericObject
     {
         public string ESPLabel { get; private set; }
         public GameObject ESPGameObject { get; private set; }
         public Color ESPLabelColor { get; private set; }
-        public int ESPMinimumDistance { get; private set; }
-
-        private static Dictionary<string, Color> characterLabelColors = new Dictionary<string, Color>();
-
+        
         /// <summary>
-        /// Represents an object (player, item, location, etc) which 
+        /// Represents a generic object (generic as in an item, location, basically anything not a player) which 
         /// is to be rendered in the OnGUI() call.
         /// </summary>
         /// <param name="Label">The label which is displayed over the object on the screen.</param>
         /// <param name="LabelColor">The color of the aforementioned label.</param>
-        /// <param name="GameObject">The actual GameObject of the thing being shown.</param>
-        /// <param name="MinimumDistance">How close to the position the player is before it shows up on screen.</param>
-        public ESPObject(string Label, Color LabelColor, GameObject GameObject, int MinimumDistance)
+        /// <param name="GameObject">The GameObject of the item/location/etc.</param>
+        public ESPGenericObject(string Label, Color LabelColor, GameObject GameObject)
         {
             ESPLabel = Label;
             ESPLabelColor = LabelColor;
             ESPGameObject = GameObject;
-            ESPMinimumDistance = MinimumDistance;
+        }
+    }
+
+    internal class ESPPlayerObject
+    {
+        public GameObject ESPPlayerGameObject { get; private set; }
+        private NicknameSync playerNicknameSync;
+        private CharacterClassManager playerClassManager;
+        
+        private static Color dClassPersonnelColor = new Color(1.0f, 0.64f, 0.0f);
+        private static readonly Dictionary<string, Color> _characterLabelColors = new Dictionary<string, Color>()
+        {
+            { "scp", Color.red },
+            { "nine", Color.blue },
+            { "chaos", Color.green },
+            { "facility", Color.gray },
+            { "scientist", Color.yellow },
+            { "class", dClassPersonnelColor }
+        };
+
+        /// <summary>
+        /// Represents a player object which is to be rendered in the OnGUI() call.
+        /// </summary>
+        /// <param name="PlayerGameObject">The GameObject of the player.</param>
+        public ESPPlayerObject(GameObject PlayerGameObject)
+        {
+            ESPPlayerGameObject = PlayerGameObject;
+            playerNicknameSync = ESPPlayerGameObject.transform.GetComponent<NicknameSync>();
+            playerClassManager = ESPPlayerGameObject.GetComponent<CharacterClassManager>();
+        }
+
+        public string GetPlayerClassname()
+        {
+            string playerClassname = playerClassManager.klasy[playerClassManager.curClass].fullName;
+            return playerClassname;
+        }
+
+        /// <summary>
+        /// Takes the player's current classname and grabs an appropriate color for 
+        /// it for usage in the OnGUI call.
+        /// </summary>
+        /// <param name="CharacterClassname">The player's class name.</param>
+        /// <returns>The Color for the player's class. If no appropriate color could be found, returns magenta.</returns>
+        public Color GetPlayerLabelColor(string CharacterClassname)
+        {
+            string characterClassLowerCase = CharacterClassname.ToLower();
+            string characterClassSubstring = characterClassLowerCase.Contains("-") ?
+                characterClassLowerCase.Split('-')[0] : characterClassLowerCase.Split(' ')[0];
+
+            if (_characterLabelColors.TryGetValue(characterClassSubstring, out Color characterClassColor))
+                return characterClassColor;
+            else
+                return Color.magenta;
+        }
+    }
+
+    internal class ESPObjectGUIDetails
+    {
+        public bool ObjectIsCloseEnough { get; private set; }
+        public int ObjectDistanceFromPlayer { get; private set; }
+        public Rect ObjectPositionRect { get; private set; }
+
+        /// <summary>
+        /// Makes calculations to retrieve a game object's distance from the player and determines
+        /// if it is close enough to be rendered, and also calculates the Rect for the information in
+        /// the OnGUI call to go in.
+        /// </summary>
+        /// <param name="ESPGameObject">The GameObject to be used for making calculations on.</param>
+        public ESPObjectGUIDetails(GameObject ESPGameObject)
+        {
+            /*
+               (This description is based off my current 
+               understanding of the Unity concepts involved. These calculations are cleaned up versions of the calculations
+               in https://github.com/chrysls's SCP:SL ESP, since I'm not so great at vectors... Or Unity.)
+
+             mainCameraPosition is essentially just where the player is currently looking, and
+               the origin of the camera... So basically the player's position in the game world as well.
+
+             objectScreenPoint is basically just where the object is on the screen. 
+               Including how far away it is (from the camera's perspective).
+
+             So what we do is, check if the object is within range, and if it is, create a new
+               Rect which will display 'on top' of the object. The subtractions are just to control
+               the position it's in. I want it to be slightly in the middle of the object on screen.
+            */
+            Camera mainCamera = Camera.main;
+            Vector3 mainCameraPosition = mainCamera.transform.position;
+            Vector3 objectPosition = ESPGameObject.transform.position;
+            Vector3 objectScreenPoint = mainCamera.WorldToScreenPoint(objectPosition);
+            int objectDistanceFromPlayer = (int)Vector3.Distance(mainCameraPosition, objectPosition);
+            bool objectIsWithinRange = !(Mathf.Abs(mainCameraPosition[2] - objectPosition[2]) > 300f) && objectScreenPoint.z > 0f;
+
+            Rect objectPositionRect = new Rect
+            (
+                objectScreenPoint.x - 20f, Screen.height - objectScreenPoint.y - 20f,
+                objectScreenPoint.x + 40f, Screen.height - objectScreenPoint.y + 50f
+            );
+
+            ObjectIsCloseEnough = objectIsWithinRange;
+            ObjectDistanceFromPlayer = objectDistanceFromPlayer;
+            ObjectPositionRect = objectPositionRect;
         }
     }
 
@@ -38,7 +134,8 @@ namespace SCPEE.NotEvil.HackModules
     public class ESP : NetworkBehaviour
     {
         private bool isEnabled = false;
-        private List<ESPObject> espObjects = new List<ESPObject>();
+        private List<ESPGenericObject> genericESPObjects = new List<ESPGenericObject>();
+        private List<ESPPlayerObject> playerESPObjects = new List<ESPPlayerObject>();
 
         private void Awake()
         {
@@ -49,7 +146,8 @@ namespace SCPEE.NotEvil.HackModules
         {
             while (true)
             {
-                espObjects.Clear();
+                genericESPObjects.Clear();
+                playerESPObjects.Clear();
                 if (isEnabled)
                 {
                     ScanForItems();
@@ -66,59 +164,50 @@ namespace SCPEE.NotEvil.HackModules
             if (Input.GetKeyDown(KeyCode.Keypad2))
                 isEnabled = !isEnabled;
         }
-
+        
         private void OnGUI()
         {
-            foreach (ESPObject espObject in espObjects)
+            // I'm unsure if the 'skip dead game objects' checks in both loops are necessary or not. I'm not 100% certain
+            //   how Unity would handle them not being there and me attempting to access information in a no longer valid
+            //   GameObject, so I'm going to play it safe and leave them in, since they don't hurt anything by leaving them.
+
+            foreach (ESPGenericObject genericEspObject in genericESPObjects)
             {
                 // Skip dead game objects.
-                if (espObject.ESPGameObject == null && !ReferenceEquals(espObject.ESPGameObject, null)) continue;
+                if (genericEspObject.ESPGameObject == null && !ReferenceEquals(genericEspObject.ESPGameObject, null)) continue;
 
-                // mainCameraPosition is essentially just where the player is currently looking, and
-                //   the origin of the camera... So basically the player's position as well.
-                // objectScreenPoint is basically just where the object is on the screen. 
-                //   Including how far away it is (from the camera's perspective).
-                // So what we do is, check if the object is within range, and if it is, create a new
-                //   Rect which will display 'on top' of the object. The subtractions are just to control
-                //   the position it's in. I want it to be slightly in the middle.
-                Camera mainCamera = Camera.main;
-                Vector3 mainCameraPosition = mainCamera.transform.position;
-                Vector3 objectPosition = espObject.ESPGameObject.transform.position;
-                Vector3 objectScreenPoint = mainCamera.WorldToScreenPoint(objectPosition);
-                int objectDistanceFromPlayer = (int)Vector3.Distance(mainCameraPosition, objectPosition);
+                ESPObjectGUIDetails espObjectGUIDetails = new ESPObjectGUIDetails(genericEspObject.ESPGameObject);
 
-                // Couldn't think of a better name for these two bools. They literally exist solely because I didn't
-                //   want the conditions being checked to cluster up in the if statement and take up space.
-                bool objectIsWithinRange = !(Mathf.Abs(mainCameraPosition[2] - objectPosition[2]) > 300f) && objectScreenPoint.z > 0f;
-                bool objectIsCloseEnough = objectDistanceFromPlayer <= espObject.ESPMinimumDistance;
-                bool espObjectRepresentsPlayer = espObject.ESPGameObject.tag == "Player";
-
-                if (objectIsWithinRange && objectIsCloseEnough)
+                if (espObjectGUIDetails.ObjectIsCloseEnough)
                 {
-                    Rect positionRect = new Rect
-                        (
-                            objectScreenPoint.x - 20f, Screen.height - objectScreenPoint.y - 20f,
-                            objectScreenPoint.x + 40f, Screen.height - objectScreenPoint.y + 50f
-                        );
-
-                    // Hack to get around player character classnames going out of sync if 
-                    // directly used as the value of the 'Label' attribute in ESPObject.
-                    if (espObjectRepresentsPlayer)
-                    {
-                        NicknameSync playerNicknameSync = espObject.ESPGameObject.transform.GetComponent<NicknameSync>();
-                        CharacterClassManager playerClassManager = playerNicknameSync.GetComponent<CharacterClassManager>();
-                        string playerClassname = playerClassManager.klasy[playerClassManager.curClass].fullName;
-                        string playerClassnameLower = playerClassname.ToLower().Split(' ')[0];
-                        
-                        GUI.color = Utils.Misc.ColorFromClassname(playerClassnameLower);
-                        GUI.Label(positionRect, $"{playerClassname} : {objectDistanceFromPlayer}");
-                    }
-                    else
-                    {
-                        GUI.color = espObject.ESPLabelColor;
-                        GUI.Label(positionRect, $"{espObject.ESPLabel} : {objectDistanceFromPlayer}");
-                    }
+                    GUI.color = genericEspObject.ESPLabelColor;
+                    GUI.Label
+                    (
+                        espObjectGUIDetails.ObjectPositionRect, 
+                        $"{genericEspObject.ESPLabel} : {espObjectGUIDetails.ObjectDistanceFromPlayer}"
+                    );
                 }
+            }
+
+            foreach (ESPPlayerObject espPlayerObject in playerESPObjects)
+            {
+                // Skip dead game objects.
+                if (espPlayerObject.ESPPlayerGameObject == null && !ReferenceEquals(espPlayerObject.ESPPlayerGameObject, null)) continue;
+
+                ESPObjectGUIDetails espObjectGUIDetails = new ESPObjectGUIDetails(espPlayerObject.ESPPlayerGameObject);
+                if (espObjectGUIDetails.ObjectIsCloseEnough)
+                {
+                    string playerLabel = espPlayerObject.GetPlayerClassname();
+                    Color labelColor = espPlayerObject.GetPlayerLabelColor(playerLabel);
+
+                    GUI.color = labelColor;
+                    GUI.Label
+                    (
+                        espObjectGUIDetails.ObjectPositionRect,
+                        $"{playerLabel} : {espObjectGUIDetails.ObjectDistanceFromPlayer}"
+                    );
+                }
+
             }
         }
 
@@ -144,15 +233,15 @@ namespace SCPEE.NotEvil.HackModules
                 {
                     if (itemLabel.ToLower().Contains(itemsOfInterest[i]))
                     {
-                        ESPObject viableItemObject = new ESPObject(itemLabel, Color.cyan, itemPickup.gameObject, 125);
-                        espObjects.Add(viableItemObject);
+                        ESPGenericObject viableItemObject = new ESPGenericObject(itemLabel, Color.cyan, itemPickup.gameObject);
+                        genericESPObjects.Add(viableItemObject);
                     }
                 }
             }
         }
 
         /// <summary>
-        /// Scans for players - uses their character's class name as the label.
+        /// Scans for all players, ignoring the local player.
         /// </summary>
         private void ScanForPlayers()
         {
@@ -162,23 +251,20 @@ namespace SCPEE.NotEvil.HackModules
                 NetworkIdentity playerNetworkIdentity = gameObject.GetComponent<NetworkIdentity>();
                 if (!playerNetworkIdentity.isLocalPlayer)
                 {
-                    // Class names go out of sync frequently, so using them as a label here leads
-                    // to issues. The label will be handled in OnGui. As will its color.
-                    // TODO: Find a way around this. (there probably isn't one using this design).
-                    ESPObject playerObject = new ESPObject(null, Color.black, player, 125);
-                    espObjects.Add(playerObject);
+                    ESPPlayerObject playerObject = new ESPPlayerObject(player);
+                    playerESPObjects.Add(playerObject);
                 }
             }
         }
 
         /// <summary>
-        /// Scans for locations of importance, which are (currently just) SCP-914, the Intercom, Elevators, and Pocket Dimension exits.
+        /// Scans for locations of importance, which are (currently just) SCP-914, Elevators, and Pocket Dimension exits.
         /// </summary>
         private void ScanForLocations()
         {
             // SCP 914
-            ESPObject scp914Object = new ESPObject("SCP 914", Color.white, GameObject.FindGameObjectWithTag("914_use"), 180);
-            espObjects.Add(scp914Object);
+            ESPGenericObject scp914Object = new ESPGenericObject("SCP 914", Color.white, GameObject.FindGameObjectWithTag("914_use"));
+            genericESPObjects.Add(scp914Object);
             
             // Elevators
             Lift[] lifts = FindObjectsOfType<Lift>();
@@ -186,8 +272,8 @@ namespace SCPEE.NotEvil.HackModules
             {
                 foreach (Lift.Elevator elevator in lifts[i].elevators)
                 {
-                    ESPObject elevatorObject = new ESPObject("Elevator", Color.white, elevator.door.gameObject, 250);
-                    espObjects.Add(elevatorObject);
+                    ESPGenericObject elevatorObject = new ESPGenericObject("Elevator", Color.white, elevator.door.gameObject);
+                    genericESPObjects.Add(elevatorObject);
                 }
             }
 
@@ -196,8 +282,8 @@ namespace SCPEE.NotEvil.HackModules
             {
                 if (pdTeleport.GetTeleportType() == PocketDimensionTeleport.PDTeleportType.Exit)
                 {
-                    ESPObject exitTeleporterObject = new ESPObject("Exit", Color.white, pdTeleport.gameObject, 100);
-                    espObjects.Add(exitTeleporterObject);
+                    ESPGenericObject exitTeleporterObject = new ESPGenericObject("Exit", Color.white, pdTeleport.gameObject);
+                    genericESPObjects.Add(exitTeleporterObject);
                 }
             }
         }
